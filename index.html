@@ -1,0 +1,399 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>侧边暗黑WebDAV全自动云同步记事本</title>
+<!-- WebDAV依赖（仅HTTPS环境正常加载） -->
+<script src="https://cdn.jsdelivr.net/npm/webdav@5.5.0/dist/umd/webdav.min.js"></script>
+<style>
+*{margin:0;padding:0;box-sizing:border-box;font-family:system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;transition: background 0.3s, color 0.3s;}
+/* 亮色默认变量 */
+:root{
+    --bg-main:#f0f2f5;
+    --bg-sidebar:#ffffff;
+    --bg-card:#ffffff;
+    --text-primary:#1f2937;
+    --text-secondary:#6b7280;
+    --text-weak:#9ca3af;
+    --border-color:#e5e7eb;
+    --primary:#1677ff;
+    --success:#00b42a;
+    --warning:#ff7d00;
+    --danger:#f53f3f;
+    --gray:#6b7280;
+    --shadow:0 2px 12px rgba(0,0,0,0.06);
+    --shadow-sidebar:0 2px 8px rgba(0,0,0,0.08);
+}
+/* 暗黑主题变量 */
+.dark-mode{
+    --bg-main:#121212;
+    --bg-sidebar:#1e1e1e;
+    --bg-card:#252525;
+    --text-primary:#f0f0f0;
+    --text-secondary:#b0b0b0;
+    --text-weak:#888888;
+    --border-color:#333333;
+    --shadow:0 2px 12px rgba(0,0,0,0.25);
+    --shadow-sidebar:0 2px 8px rgba(0,0,0,0.2);
+}
+body{background:var(--bg-main);color:var(--text-primary);display:flex;min-height:100vh;}
+/* 侧边栏样式 */
+.sidebar{
+    width:240px;background:var(--bg-sidebar);box-shadow:var(--shadow-sidebar);padding:20px 16px;
+    display:flex;flex-direction:column;gap:14px;flex-shrink:0;
+}
+.sidebar-title{font-size:20px;font-weight:600;text-align:center;padding-bottom:16px;border-bottom:1px solid var(--border-color);margin-bottom:8px;}
+.side-btn{
+    width:100%;padding:14px 12px;border-radius:10px;border:none;font-size:16px;text-align:left;cursor:pointer;color:#fff;font-weight:500;
+}
+.btn-new{background:var(--primary);box-shadow:0 2px 6px rgba(22,119,255,0.25);}
+.btn-export{background:#028e30;box-shadow:0 2px 6px rgba(0,180,42,0.25);}
+.btn-import{background:var(--warning);box-shadow:0 2px 6px rgba(255,125,0,0.25);}
+.btn-sync-upload{background:#9333ea;box-shadow:0 2px 6px rgba(147,51,234,0.25);}
+.btn-sync-download{background:#0891b2;box-shadow:0 2px 6px rgba(8,145,178,0.25);}
+.btn-setting{background:#475569;box-shadow:0 2px 6px rgba(71,85,105,0.25);}
+.btn-theme{background:var(--gray);box-shadow:0 2px 6px rgba(107,114,128,0.25);margin-top:auto;}
+/* 主笔记内容区 */
+.main-content{flex:1;padding:20px;overflow-y:auto;}
+.tip-desc{font-size:14px;color:var(--text-secondary);margin-bottom:10px;line-height:1.6;}
+.sync-status{font-size:14px;color:var(--primary);margin-bottom:20px;padding:8px;background:rgba(22,119,255,0.08);border-radius:8px;min-height:36px;line-height:20px;}
+/* 笔记卡片 */
+.note-card{background:var(--bg-card);border-radius:16px;padding:18px;margin-bottom:14px;box-shadow:var(--shadow);}
+.note-card .note-title{font-size:19px;font-weight:600;margin-bottom:6px;color:var(--text-primary);}
+.note-card .note-time{font-size:13px;color:var(--text-weak);margin-bottom:10px;}
+.note-card .note-content{font-size:16px;color:var(--text-secondary);line-height:1.7;word-break:break-all;}
+.note-operate{margin-top:14px;display:flex;gap:10px;}
+.edit-small-btn{background:var(--gray);color:#fff;border:none;border-radius:8px;padding:8px 16px;font-size:15px;}
+.del-small-btn{background:var(--danger);color:#fff;border:none;border-radius:8px;padding:8px 16px;font-size:15px;}
+/* 通用弹窗遮罩 */
+.mask{position:fixed;inset:0;background:rgba(0,0,0,0.55);display:flex;align-items:center;justify-content:center;padding:16px;display:none;z-index:99;}
+.pop-box{background:var(--bg-sidebar);color:var(--text-primary);border-radius:18px;width:100%;max-width:520px;padding:22px;}
+.pop-title{font-size:18px;font-weight:600;text-align:center;margin-bottom:18px;color:var(--text-primary)}
+.form-input{width:100%;border:1px solid var(--border-color);background:var(--bg-card);color:var(--text-primary);border-radius:12px;padding:15px;font-size:16px;margin-bottom:14px;outline:none;}
+.form-textarea{width:100%;border:1px solid var(--border-color);background:var(--bg-card);color:var(--text-primary);border-radius:12px;padding:15px;font-size:16px;min-height:320px;resize:none;outline:none;margin-bottom:14px;}
+.import-textarea{min-height:200px;}
+.pop-btn-group{display:flex;gap:12px;margin-top:8px;}
+.full-green-btn{width:100%;background:var(--success);color:#fff;border:none;border-radius:12px;padding:14px;font-size:16px;font-weight:500;}
+.full-gray-btn{width:100%;background:var(--border-color);color:var(--text-primary);border:none;border-radius:12px;padding:14px;font-size:16px;font-weight:500;margin-top:10px;}
+/* 竖屏手机适配：侧边转顶部横向导航 */
+@media (max-width:768px){
+    body{flex-direction:column;}
+    .sidebar{width:100%;flex-direction:row;flex-wrap:wrap;padding:12px;gap:10px;}
+    .sidebar-title{display:none;}
+    .side-btn{flex:1;min-width:100px;text-align:center;padding:12px;}
+    .btn-theme{margin-top:0;}
+    .main-content{padding:16px;}
+}
+</style>
+</head>
+<body>
+<!-- 左侧侧边菜单栏 -->
+<div class="sidebar">
+    <div class="sidebar-title">云同步记事本</div>
+    <button class="side-btn btn-new" id="addNote">新建笔记</button>
+    <button class="side-btn btn-export" id="exportBackup">手动导出备份</button>
+    <button class="side-btn btn-import" id="showImport">手动导入恢复</button>
+    <button class="side-btn btn-sync-upload" id="syncUpload">一键上传WebDAV云备份</button>
+    <button class="side-btn btn-sync-download" id="syncDownload">一键下载WebDAV云端笔记</button>
+    <button class="side-btn btn-setting" id="openDavSetting">WebDAV账号设置</button>
+    <button class="side-btn btn-theme" id="toggleTheme">切换暗黑/日间</button>
+</div>
+<!-- 右侧主浏览编辑区 -->
+<div class="main-content">
+    <div class="sync-status" id="syncStatus">就绪（HTTPS公网链接可执行自动同步，本地file打开仅手动可用）</div>
+    <div class="tip-desc">日常编辑自动保存本地｜HTTPS环境可一键云端同步，file本地仅手动导出备份安全使用</div>
+    <div id="noteList"></div>
+</div>
+
+<!-- 新增/编辑笔记弹窗 -->
+<div class="mask" id="editMask">
+    <div class="pop-box">
+        <input class="form-input" id="titleInp" placeholder="输入笔记标题">
+        <textarea class="form-textarea" id="contentInp" placeholder="详细记录笔记内容"></textarea>
+        <input type="hidden" id="editIndex">
+        <div class="pop-btn-group">
+            <button class="full-green-btn" id="saveLocal">保存到本地</button>
+        </div>
+        <button class="full-gray-btn" id="closeEdit">取消关闭</button>
+    </div>
+</div>
+
+<!-- 手动导入备份弹窗 -->
+<div class="mask" id="importMask">
+    <div class="pop-box">
+        <div class="pop-title">粘贴云端备份文本手动导入</div>
+        <textarea class="form-textarea import-textarea" id="pasteBackupText" placeholder="粘贴从WebDAV网盘下载复制的完整备份JSON文本"></textarea>
+        <div class="pop-btn-group">
+            <button class="full-green-btn" id="confirmImport">确认导入覆盖本地笔记</button>
+        </div>
+        <button class="full-gray-btn" id="closeImport">取消关闭</button>
+    </div>
+</div>
+
+<!-- WebDAV账号设置弹窗 -->
+<div class="mask" id="davSettingMask">
+    <div class="pop-box">
+        <div class="pop-title">WebDAV云同步账号配置</div>
+        <input class="form-input" id="davUrl" placeholder="WebDAV目录地址（例：https://dav.jianguoyun.com/dav/note_backup/）">
+        <input class="form-input" id="davUser" placeholder="WebDAV账号（坚果云注册邮箱）">
+        <input class="form-input" type="password" id="davPwd" placeholder="WebDAV第三方授权密码（非登录密码）">
+        <div class="pop-btn-group">
+            <button class="full-green-btn" id="saveDavConfig">保存配置</button>
+        </div>
+        <button class="full-gray-btn" id="closeDavSetting">取消关闭</button>
+    </div>
+</div>
+
+<script>
+//本地存储Key
+const LOCAL_STORE_KEY = 'auto_webdav_sidebar_notes';
+const DAV_CONFIG_KEY = 'webdav_sync_config';
+const DAV_CLOUD_FILE_NAME = 'cloud_notes_backup.json';
+let noteDataList = JSON.parse(localStorage.getItem(LOCAL_STORE_KEY)) || [];
+let davConfig = JSON.parse(localStorage.getItem(DAV_CONFIG_KEY)) || {url:'',user:'',pwd:''};
+//主题初始化
+const savedTheme = localStorage.getItem('noteTheme');
+if(savedTheme === 'dark') document.body.classList.add('dark-mode');
+//DOM全局绑定
+const addNoteBtn = document.getElementById('addNote');
+const exportBackupBtn = document.getElementById('exportBackup');
+const openImportBtn = document.getElementById('showImport');
+const syncUploadBtn = document.getElementById('syncUpload');
+const syncDownloadBtn = document.getElementById('syncDownload');
+const openDavSettingBtn = document.getElementById('openDavSetting');
+const toggleThemeBtn = document.getElementById('toggleTheme');
+const noteListWrap = document.getElementById('noteList');
+const syncStatusText = document.getElementById('syncStatus');
+//编辑弹窗
+const editMask = document.getElementById('editMask');
+const titleInput = document.getElementById('titleInp');
+const contentInput = document.getElementById('contentInp');
+const editIndexInput = document.getElementById('editIndex');
+const saveLocalBtn = document.getElementById('saveLocal');
+const closeEditBtn = document.getElementById('closeEdit');
+//手动导入弹窗
+const importMask = document.getElementById('importMask');
+const pasteTextarea = document.getElementById('pasteBackupText');
+const confirmImportBtn = document.getElementById('confirmImport');
+const closeImportBtn = document.getElementById('closeImport');
+//WebDAV设置弹窗
+const davSettingMask = document.getElementById('davSettingMask');
+const davUrlInput = document.getElementById('davUrl');
+const davUserInput = document.getElementById('davUser');
+const davPwdInput = document.getElementById('davPwd');
+const saveDavConfigBtn = document.getElementById('saveDavConfig');
+const closeDavSettingBtn = document.getElementById('closeDavSetting');
+//回填已有配置
+davUrlInput.value = davConfig.url;
+davUserInput.value = davConfig.user;
+davPwdInput.value = davConfig.pwd;
+
+//渲染笔记列表
+function renderNoteList(){
+    noteListWrap.innerHTML = '';
+    noteDataList.forEach((noteItem, idx) => {
+        const noteCard = document.createElement('div');
+        noteCard.className = 'note-card';
+        noteCard.innerHTML = `
+            <div class="note-title">${noteItem.title || '无标题笔记'}</div>
+            <div class="note-time">${noteItem.time}</div>
+            <div class="note-content">${noteItem.content}</div>
+            <div class="note-operate">
+                <button class="edit-small-btn" data-idx="${idx}">编辑</button>
+                <button class="del-small-btn" data-idx="${idx}">删除</button>
+            </div>
+        `;
+        noteListWrap.appendChild(noteCard);
+    })
+    //编辑绑定
+    document.querySelectorAll('.edit-small-btn').forEach(btn=>{
+        btn.addEventListener('click', (e)=>{
+            const currentIdx = Number(e.target.dataset.idx);
+            const targetNote = noteDataList[currentIdx];
+            editIndexInput.value = currentIdx;
+            titleInput.value = targetNote.title;
+            contentInput.value = targetNote.content;
+            editMask.style.display = 'flex';
+        })
+    })
+    //删除绑定
+    document.querySelectorAll('.del-small-btn').forEach(btn=>{
+        btn.addEventListener('click', (e)=>{
+            const currentIdx = Number(e.target.dataset.idx);
+            if(confirm('确定删除这条笔记，删除后无法直接恢复？')){
+                noteDataList.splice(currentIdx,1);
+                saveNotesToLocal();
+                renderNoteList();
+            }
+        })
+    })
+}
+//保存笔记本地缓存
+function saveNotesToLocal(){
+    localStorage.setItem(LOCAL_STORE_KEY, JSON.stringify(noteDataList));
+}
+//更新同步状态文字
+function updateSyncStatus(text){
+    syncStatusText.innerText = text;
+}
+//切换明暗主题
+toggleThemeBtn.addEventListener('click',()=>{
+    document.body.classList.toggle('dark-mode');
+    const nowTheme = document.body.classList.contains('dark-mode') ? 'dark' : 'light';
+    localStorage.setItem('noteTheme',nowTheme);
+})
+//新建笔记弹窗打开
+addNoteBtn.addEventListener('click', ()=>{
+    editIndexInput.value = '';
+    titleInput.value = '';
+    contentInput.value = '';
+    editMask.style.display = 'flex';
+})
+//关闭编辑弹窗
+closeEditBtn.addEventListener('click', ()=>{
+    editMask.style.display = 'none';
+})
+//保存新建/编辑笔记到本地
+saveLocalBtn.addEventListener('click', ()=>{
+    const titleVal = titleInput.value.trim();
+    const contentVal = contentInput.value.trim();
+    if(!titleVal && !contentVal){
+        alert('标题或笔记内容至少填写一项');
+        return;
+    }
+    const nowTime = new Date().toLocaleString();
+    const editIdx = editIndexInput.value;
+    if(editIdx !== ''){
+        noteDataList[editIdx].title = titleVal;
+        noteDataList[editIdx].content = contentVal;
+        noteDataList[editIdx].time = nowTime;
+    }else{
+        noteDataList.unshift({title: titleVal,content: contentVal,time: nowTime})
+    }
+    saveNotesToLocal();
+    renderNoteList();
+    editMask.style.display = 'none';
+    updateSyncStatus('本地保存完成，可执行云同步上传');
+})
+//手动导出备份复制
+exportBackupBtn.addEventListener('click', ()=>{
+    const backupJsonStr = JSON.stringify(noteDataList, null, 2);
+    navigator.clipboard.writeText(backupJsonStr).then(()=>{
+        alert('✅手动备份文本已复制剪贴板，可网页上传WebDAV');
+    }).catch(()=>{
+        prompt('手动复制备份文本：', backupJsonStr);
+    })
+})
+//打开手动导入弹窗
+openImportBtn.addEventListener('click', ()=>{
+    pasteTextarea.value = '';
+    importMask.style.display = 'flex';
+})
+//关闭手动导入弹窗
+closeImportBtn.addEventListener('click', ()=>{
+    importMask.style.display = 'none';
+})
+//确认手动导入恢复
+confirmImportBtn.addEventListener('click', ()=>{
+    const pasteStr = pasteTextarea.value.trim();
+    if(!pasteStr){
+        alert('请粘贴备份文本');
+        return;
+    }
+    try{
+        const restoreNotes = JSON.parse(pasteStr);
+        if(Array.isArray(restoreNotes)){
+            if(confirm('⚠️确认覆盖当前本地笔记？')){
+                noteDataList = restoreNotes;
+                saveNotesToLocal();
+                renderNoteList();
+                importMask.style.display = 'none';
+                alert('✅手动导入成功');
+                updateSyncStatus('手动云端备份导入完成');
+            }
+        }else{
+            alert('备份文本格式错误');
+        }
+    }catch(err){
+        alert('解析失败：'+err.message);
+    }
+})
+//打开WebDAV设置弹窗
+openDavSettingBtn.addEventListener('click', ()=>{
+    davSettingMask.style.display = 'flex';
+})
+//关闭WebDAV设置弹窗
+closeDavSettingBtn.addEventListener('click', ()=>{
+    davSettingMask.style.display = 'none';
+})
+//保存WebDAV账号配置到本地
+saveDavConfigBtn.addEventListener('click', ()=>{
+    davConfig.url = davUrlInput.value.trim();
+    davConfig.user = davUserInput.value.trim();
+    davConfig.pwd = davPwdInput.value.trim();
+    localStorage.setItem(DAV_CONFIG_KEY, JSON.stringify(davConfig));
+    davSettingMask.style.display = 'none';
+    updateSyncStatus('WebDAV账号配置已保存，HTTPS链接可一键同步');
+})
+//【一键上传本地笔记到WebDAV云端覆盖】仅HTTPS环境生效
+syncUploadBtn.addEventListener('click', async ()=>{
+    //检测当前协议，本地file直接拦截提示
+    if(location.protocol === 'file:'){
+        alert('当前为本地file打开，浏览器跨域限制无法自动上传，请切换HTTPS公网链接再执行自动同步，可继续使用手动备份');
+        updateSyncStatus('file本地协议：自动上传禁用，使用手动备份');
+        return;
+    }
+    if(!davConfig.url || !davConfig.user || !davConfig.pwd){
+        alert('请先打开WebDAV账号设置填写完整地址、账号、密码并保存');
+        return;
+    }
+    try{
+        updateSyncStatus('正在上传笔记备份到WebDAV云端...');
+        const davClient = webdav.createClient(davConfig.url,{username:davConfig.user,password:davConfig.pwd});
+        const cloudJsonContent = JSON.stringify(noteDataList,null,2);
+        await davClient.putFileContents(DAV_CLOUD_FILE_NAME,cloudJsonContent,{contentType:'application/json',overwrite:true});
+        updateSyncStatus('✅一键上传WebDAV云备份成功，云端已更新最新笔记');
+    }catch(error){
+        console.error(error);
+        updateSyncStatus('❌上传失败：'+error.message);
+        alert('上传异常：'+error.message);
+    }
+})
+//【一键从WebDAV云端下载笔记覆盖本地】仅HTTPS环境生效
+syncDownloadBtn.addEventListener('click', async ()=>{
+    if(location.protocol === 'file:'){
+        alert('当前为本地file打开，浏览器跨域限制无法自动下载，请切换HTTPS公网链接再执行自动同步，可继续使用手动导入');
+        updateSyncStatus('file本地协议：自动下载禁用，使用手动导入');
+        return;
+    }
+    if(!davConfig.url || !davConfig.user || !davConfig.pwd){
+        alert('请先打开WebDAV账号设置填写完整WebDAV信息并保存');
+        return;
+    }
+    if(!confirm('⚠️下载云端笔记将覆盖当前全部本地笔记，确认继续吗？')) return;
+    try{
+        updateSyncStatus('正在从WebDAV云端下载最新笔记...');
+        const davClient = webdav.createClient(davConfig.url,{username:davConfig.user,password:davConfig.pwd});
+        const fileIsExist = await davClient.exists(DAV_CLOUD_FILE_NAME);
+        if(!fileIsExist){
+            updateSyncStatus('云端暂无备份文件，无需下载');
+            return;
+        }
+        const cloudText = await davClient.getFileContents(DAV_CLOUD_FILE_NAME,{format:'text'});
+        const cloudNotesArr = JSON.parse(cloudText);
+        noteDataList = cloudNotesArr;
+        saveNotesToLocal();
+        renderNoteList();
+        updateSyncStatus('✅云端笔记下载恢复成功，本地已更新为云端版本');
+    }catch(error){
+        console.error(error);
+        updateSyncStatus('❌下载失败：'+error.message);
+        alert('下载异常：'+error.message);
+    }
+})
+//初始化渲染笔记列表
+renderNoteList();
+</script>
+</body>
+</html>
