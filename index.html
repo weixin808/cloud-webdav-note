@@ -1,497 +1,795 @@
 <!DOCTYPE html>
 <html lang="zh-CN">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
-<title>云同步记事本｜修复右侧滑栏版</title>
-<style>
-*{margin:0;padding:0;box-sizing:border-box;font-family:system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;transition: 0.3s all;}
-:root{
-    --bg-main:#f0f2f5;
-    --bg-sidebar:#ffffff;
-    --bg-card:#ffffff;
-    --text-primary:#1f2937;
-    --text-secondary:#6b7280;
-    --text-weak:#9ca3af;
-    --border-color:#e5e7eb;
-    --primary:#1677ff;
-    --success:#00b42a;
-    --warning:#ff7d00;
-    --danger:#f53f3f;
-    --gray:#6b7280;
-    --pink:#e64398;
-    --shadow:0 2px 12px rgba(0,0,0,0.06);
-    --shadow-sidebar:0 2px 8px rgba(0,0,0,0.08);
-}
-.dark-mode{
-    --bg-main:#121212;
-    --bg-sidebar:#1e1e1e;
-    --bg-card:#252525;
-    --text-primary:#f0f0f0;
-    --text-secondary:#b0b0b0;
-    --text-weak:#888888;
-    --border-color:#333333;
-}
-body{background:var(--bg-main);color:var(--text-primary);min-height:100vh;position:relative;overflow-x:hidden;}
-/* 右上角切换按钮 */
-.side-toggle{
-    position:fixed;
-    top:16px;
-    right:16px;
-    z-index:1000;
-    width:44px;
-    height:44px;
-    border-radius:50%;
-    background:var(--primary);
-    color:#fff;
-    border:none;
-    font-size:20px;
-    cursor:pointer;
-    box-shadow:0 2px 8px rgba(0,0,0,0.15);
-}
-/* 右侧侧边栏基础样式 */
-.right-sidebar{
-    position:fixed;
-    top:0;
-    right:0;
-    height:100vh;
-    width:260px;
-    background:var(--bg-sidebar);
-    box-shadow:-2px 0 10px rgba(0,0,0,0.08);
-    padding:80px 16px 20px;
-    display:flex;
-    flex-direction:column;
-    gap:14px;
-    transform: translateX(100%);
-    z-index:999;
-}
-/* 打开激活类 */
-.right-sidebar.open{
-    transform: translateX(0);
-}
-.side-btn{
-    width:100%;padding:14px 12px;border:none;border-radius:10px;font-size:16px;text-align:left;cursor:pointer;color:#fff;font-weight:500;
-}
-.btn-new{background:var(--primary);}
-.btn-export{background:var(--success);}
-.btn-import{background:var(--warning);}
-.btn-sync-upload{background:#9333ea;}
-.btn-sync-download{background:#087792;}
-.btn-setting{background:#475569;}
-.btn-donate{background:var(--pink);}
-.btn-theme{background:var(--gray);margin-top:auto;}
-/* 主内容区 */
-.main-content{
-    min-height:100vh;
-    padding:80px 20px 40px;
-    display:flex;
-    flex-direction:column;
-}
-.sync-status{
-    font-size:12px;
-    color:var(--primary);
-    padding:6px 8px;
-    background:rgba(22,119,255,0.08);
-    border-radius:6px;
-    line-height:16px;
-    margin-top:auto;
-    margin-bottom:8px;
-    text-align:center;
-}
-.tip-desc{
-    font-size:11px;
-    color:var(--text-secondary);
-    line-height:1.5;
-    text-align:center;
-    margin-bottom:20px;
-}
-.note-card{background:var(--bg-card);border-radius:16px;padding:18px;margin-bottom:14px;box-shadow:var(--shadow);}
-.note-card .note-title{font-size:19px;font-weight:600;margin-bottom:6px;color:var(--text-primary);}
-.note-card .note-time{font-size:13px;color:var(--text-weak);margin-bottom:10px;}
-.note-card .note-content{font-size:16px;color:var(--text-secondary);line-height:1.7;word-break:break-all;}
-.note-operate{margin-top:14px;display:flex;gap:10px;}
-.edit-small-btn{background:var(--gray);color:#fff;border:none;border-radius:8px;padding:8px 16px;font-size:15px;cursor:pointer;}
-.del-small-btn{background:var(--danger);color:#fff;border:none;border-radius:8px;padding:8px 16px;font-size:15px;cursor:pointer;}
-.mask{position:fixed;inset:0;background:rgba(0,0,0,0.55);display:flex;align-items:center;justify-content:center;padding:16px;display:none;z-index:1001;}
-.pop-box{background:var(--bg-sidebar);color:var(--text-primary);border-radius:18px;width:100%;max-width:520px;padding:22px;}
-.pop-title{font-size:18px;font-weight:600;text-align:center;margin-bottom:18px;color:var(--text-primary)}
-.form-input{width:100%;border:1px solid var(--border-color);background:var(--bg-card);color:var(--text-primary);border-radius:12px;padding:15px;font-size:16px;margin-bottom:14px;outline:none;}
-.form-textarea{width:100%;border:1px solid var(--border-color);background:var(--bg-card);color:var(--text-primary);border-radius:12px;padding:15px;font-size:16px;min-height:320px;resize:none;outline:none;margin-bottom:14px;}
-.import-textarea{min-height:200px;}
-.pop-btn-group{display:flex;gap:12px;margin-top:8px;}
-.full-green-btn{width:100%;background:var(--success);color:#fff;border:none;border-radius:12px;padding:14px;font-size:16px;font-weight:500;cursor:pointer;}
-.full-gray-btn{width:100%;background:var(--border-color);color:var(--text-primary);border:none;border-radius:12px;padding:14px;font-size:16px;font-weight:500;margin-top:10px;cursor:pointer;}
-.donate-qrcode{width:80%;max-width:300px;margin:20px auto;display:block;border-radius:12px;background:#eee;}
-.donate-text{text-align:center;line-height:1.7;font-size:15px;color:var(--text-secondary);margin:10px 0;}
-@media (max-width:768px){
-    .right-sidebar{width:240px;}
-    .main-content{padding:76px 16px 30px;}
-}
-</style>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>安卓精简记事本-删除修复稳版</title>
+    <style>
+        *{margin:0;padding:0;box-sizing:border-box;font-family:system-ui,Microsoft YaHei;
+            -webkit-tap-highlight-color: transparent;
+        }
+        :root{
+            --body-bg:#f5f7fa;
+            --text-color:#333;
+            --input-bg:#fff;
+            --input-border:#ddd;
+            --item-bg:#fff;
+            --shadow-color:rgba(0,0,0.1);
+            --mask-bg:rgba(80,80,80,0.35);
+        }
+        .dark-mode{
+            --body-bg:#1a1a1a;
+            --text-color:#eee;
+            --input-bg:#2d2d2d;
+            --input-border:#444;
+            --item-bg:#2d2d2d;
+            --shadow-color:rgba(0,0.3);
+            --mask-bg:rgba(0,0,0.25);
+        }
+        body{
+            background:var(--body-bg);
+            color:var(--text-color);
+            padding:15px;
+            max-width:100%;
+            min-height:100vh;
+            transition: background 0.3s, color 0.3s;
+        }
+        .title-set-row{
+            display:flex;
+            gap:10px;
+            align-items:center;
+            margin-bottom:15px;
+        }
+        #noteTitle{
+            flex:1;
+            padding:0 14px;
+            background:var(--input-bg);
+            color:var(--text-color);
+            border:1px solid var(--input-border);
+            border-radius:6px;
+            font-size:16px;
+            height:48px;
+            line-height:48px;
+        }
+        .top-right-btn{
+            height:48px;
+            padding:0 16px;
+            background:#27ae60;
+            color:#fff;
+            border:none;
+            border-radius:6px;
+            font-size:14px;
+            line-height:48px;
+            flex-shrink:0;
+            box-shadow:0 4px 0 #1e8449,0 6px 8px rgba(0,0,0.15);
+            transition:all 0.1s ease;
+            cursor:pointer;
+        }
+        .top-right-btn:active{
+            transform:translateY(2px);
+            box-shadow:0 2px 0 #1e8449,0 3px 4px rgba(0,0,0.15);
+        }
+        .save-wrap{
+            margin-bottom:15px;
+        }
+        .btn{
+            width:100%;
+            padding:12px 8px;
+            background:#4096ff;
+            color:#fff;
+            border:none;
+            border-radius:6px;
+            cursor:pointer;
+            font-size:15px;
+            text-align:center;
+            box-shadow:0 4px 0 #267ddd,0 6px 8px rgba(0,0,0.15);
+            transition:all 0.1s ease;
+        }
+        .btn:active{
+            transform:translateY(2px);
+            box-shadow:0 2px 0 #267ddd,0 3px 4px rgba(0,0,0.15);
+        }
+        #noteContent{
+            width:100%;
+            height:280px;
+            padding:14px;
+            background:var(--input-bg);
+            color:var(--text-color);
+            border:1px solid var(--input-border);
+            border-radius:6px;
+            font-size:16px;
+            resize:vertical;
+            line-height:1.6;
+            margin-bottom:15px
+        }
+        .history-container{
+            margin-top:10px;
+        }
+        .history-toggle-btn{
+            width:100%;
+            padding:12px 8px;
+            background:#9b59b6;
+            color:#fff;
+            border:none;
+            border-radius:6px;
+            cursor:pointer;
+            font-size:15px;
+            text-align:center;
+            box-shadow:0 4px 0 #7d3c98,0 6px 8px rgba(0,0,0.15);
+            transition:all 0.1s ease;
+            margin-bottom:10px;
+        }
+        .history-toggle-btn:active{
+            transform:translateY(2px);
+            box-shadow:0 2px 0 #7d3c98,0 3px 4px rgba(0,0,0.15);
+        }
+        .history-list-wrap{
+            display:none;
+        }
+        .history-list-wrap.show{
+            display:block;
+        }
+        .note-item{
+            padding:12px 16px;
+            background:var(--item-bg);
+            border-radius:6px;
+            margin-bottom:10px;
+            display:flex;
+            justify-content:space-between;
+            align-items:center;
+            box-shadow:0 1px 3px var(--shadow-color);
+            cursor:pointer;
+        }
+        .note-info{
+            flex:1;
+            cursor:pointer;
+            background:transparent !important;
+        }
+        .note-info:active, .note-item:active{
+            background:transparent !important;
+        }
+        .note-title{font-weight:bold;margin-bottom:4px;color:var(--text-color);font-size:16px}
+        .note-time{font-size:12px;color:#888}
+        .delete-btn{
+            padding:8px 10px;
+            background:#ff4d4f;
+            color:#fff;
+            border:none;
+            border-radius:4px;
+            cursor:pointer;
+            font-size:14px;
+            box-shadow:0 3px 0 #d9363e,0 4px 6px rgba(0,0,0.12);
+            transition:all 0.1s ease;
+        }
+        .delete-btn:active{
+            transform:translateY(2px);
+            box-shadow:0 1px 0 #d9363e,0 2px 3px rgba(0,0,0.12);
+        }
+        h3{display:none;}
+        .toast{
+            position:fixed;
+            top:50%;
+            left:50%;
+            transform:translate(-50%,-50%);
+            background:rgba(0,0,0,0.75);
+            color:#fff;
+            padding:10px 20px;
+            border-radius:6px;
+            font-size:15px;
+            z-index:9999;
+            display:none;
+        }
+        .confirm-mask{
+            position:fixed;
+            inset:0;
+            background:var(--mask-bg);
+            backdrop-filter: blur(6px);
+            -webkit-backdrop-filter: blur(6px);
+            display:none;
+            align-items:center;
+            justify-content:center;
+            z-index:9998;
+        }
+        .confirm-box{
+            background:var(--item-bg);
+            color:var(--text-color);
+            border-radius:8px;
+            width:80%;
+            max-width:300px;
+            padding:20px;
+        }
+        .confirm-text{
+            font-size:16px;
+            color:var(--text-color);
+            text-align:center;
+            margin-bottom:20px;
+            line-height:1.5;
+        }
+        .confirm-btn-group{
+            display:flex;
+            gap:10px;
+        }
+        .confirm-cancel{
+            flex:1;
+            padding:10px;
+            border:none;
+            border-radius:6px;
+            font-size:15px;
+            cursor:pointer;
+            background:#eee;
+            color:#333;
+            box-shadow:0 3px 0 #cccccc,0 4px 6px rgba(0,0,0.1);
+            transition:all 0.1s ease;
+        }
+        .confirm-cancel:active{
+            transform:translateY(2px);
+            box-shadow:0 1px 0 #cccccc,0 2px 3px rgba(0,0,0.1);
+        }
+        .dark-mode .confirm-cancel{
+            background:#444;
+            color:#eee;
+            box-shadow:0 3px 0 #333333,0 4px 6px rgba(0,0.2);
+        }
+        .dark-mode .confirm-cancel:active{
+            box-shadow:0 1px 0 #333333,0 2px 3px rgba(0,0.2);
+        }
+        .confirm-ok{
+            flex:1;
+            padding:10px;
+            border:none;
+            border-radius:6px;
+            font-size:15px;
+            cursor:pointer;
+            background:#ff4d4f;
+            color:#fff;
+            box-shadow:0 3px 0 #d9363e,0 4px 6px rgba(0,0.12);
+            transition:all 0.1s ease;
+        }
+        .confirm-ok:active{
+            transform:translateY(2px);
+            box-shadow:0 1px 0 #d9363e,0 2px 3px rgba(0,0.12);
+        }
+        .edit-mask{
+            position:fixed;
+            inset:0;
+            background:var(--mask-bg);
+            backdrop-filter: blur(6px);
+            -webkit-backdrop-filter: blur(6px);
+            display:none;
+            align-items:center;
+            justify-content:center;
+            z-index:9997;
+            padding:15px;
+            overflow-y:auto;
+        }
+        .edit-box{
+            background:var(--item-bg);
+            border-radius:8px;
+            width:100%;
+            max-width:400px;
+            padding:15px;
+        }
+        .edit-title-input{
+            width:100%;
+            padding:0 12px;
+            background:var(--input-bg);
+            color:var(--text-color);
+            border:1px solid var(--input-border);
+            border-radius:6px;
+            font-size:16px;
+            margin-bottom:10px;
+            height:48px;
+            line-height:48px;
+        }
+        .edit-content-textarea{
+            width:100%;
+            min-height:580px;
+            padding:12px;
+            background:var(--input-bg);
+            color:var(--text-color);
+            border:1px solid var(--input-border);
+            border-radius:6px;
+            font-size:16px;
+            line-height:1.6;
+            resize:vertical;
+            margin-bottom:15px;
+        }
+        .edit-btn-group{
+            display:flex;
+            gap:10px;
+        }
+        .edit-save-btn{
+            flex:1;
+            padding:10px;
+            background:#4096ff;
+            color:#fff;
+            border:none;
+            border-radius:6px;
+            font-size:15px;
+            cursor:pointer;
+            box-shadow:0 3px 0 #267ddd,0 4px 6px rgba(0,0.15);
+            transition:all 0.1s ease;
+        }
+        .edit-save-btn:active{
+            transform:translateY(2px);
+            box-shadow:0 1px 0 #267ddd,0 2px 3px rgba(0,0.15);
+        }
+        .edit-close-btn{
+            flex:1;
+            padding:10px;
+            background:#eee;
+            color:#333;
+            border:none;
+            border-radius:6px;
+            font-size:15px;
+            cursor:pointer;
+            box-shadow:0 3px 0 #cccccc,0 4px 6px rgba(0,0.1);
+            transition:all 0.1s ease;
+        }
+        .edit-close-btn:active{
+            transform:translateY(2px);
+            box-shadow:0 1px 0 #cccccc,0 2px 3px rgba(0,0.1);
+        }
+        .dark-mode .edit-close-btn{
+            background:#444;
+            color:#eee;
+            box-shadow:0 3px 0 #333333,0 4px 6px rgba(0,0.2);
+        }
+        .dark-mode .edit-close-btn:active{
+            box-shadow:0 1px 0 #333333,0 2px 3px rgba(0,0.2);
+        }
+        .setting-mask{
+            position:fixed;
+            inset:0;
+            background:var(--mask-bg);
+            backdrop-filter: blur(6px);
+            -webkit-backdrop-filter: blur(6px);
+            display:none;
+            align-items:center;
+            justify-content:center;
+            z-index:10000;
+            padding:15px;
+            overflow-y:auto;
+        }
+        .setting-box{
+            background:var(--item-bg);
+            color:var(--text-color);
+            border-radius:8px;
+            width:100%;
+            max-width:400px;
+            padding:20px;
+        }
+        .setting-title{
+            font-size:18px;
+            font-weight:bold;
+            text-align:center;
+            margin-bottom:20px;
+        }
+        .dark-switch-row{
+            display:flex;
+            justify-content:space-between;
+            align-items:center;
+            padding:15px 0;
+            border-bottom:1px solid var(--input-border);
+            font-size:16px;
+        }
+        .webdav-set-row{
+            padding:15px 0;
+            border-bottom:1px solid var(--input-border);
+        }
+        .webdav-input{
+            width:100%;
+            margin:6px 0;
+            padding:10px;
+            background:var(--input-bg);
+            color:var(--text-color);
+            border:1px solid var(--input-border);
+            border-radius:6px;
+            font-size:15px;
+        }
+        .backup-cloud-btn{
+            width:100%;
+            margin:8px 0;
+            padding:12px;
+            background:#27ae60;
+            color:#fff;
+            border:none;
+            border-radius:6px;
+            font-size:15px;
+            cursor:pointer;
+            box-shadow:0 4px 0 #1e8449,0 6px 8px rgba(0,0.15);
+            transition:all 0.1s ease;
+        }
+        .backup-cloud-btn:active{
+            transform:translateY(2px);
+            box-shadow:0 2px 0 #1e8449,0 3px 4px rgba(0,0.15);
+        }
+        .restore-cloud-btn{
+            width:100%;
+            margin:8px 0;
+            padding:12px;
+            background:#e67e22;
+            color:#fff;
+            border:none;
+            border-radius:6px;
+            font-size:15px;
+            cursor:pointer;
+            box-shadow:0 4px 0 #c06b1b,0 6px 8px rgba(0,0.15);
+            transition:all 0.1s ease;
+        }
+        .restore-cloud-btn:active{
+            transform:translateY(2px);
+            box-shadow:0 2px 0 #c06b1b,0 3px 4px rgba(0,0.15);
+        }
+        .local-backup-btn{
+            width:100%;
+            margin:8px 0;
+            padding:12px;
+            background:#3498db;
+            color:#fff;
+            border:none;
+            border-radius:6px;
+            font-size:15px;
+            cursor:pointer;
+            box-shadow:0 4px 0 #217dbb,0 6px 8px rgba(0,0.15);
+            transition:all 0.1s ease;
+        }
+        .local-backup-btn:active{
+            transform:translateY(2px);
+            box-shadow:0 2px 0 #217dbb,0 3px 4px rgba(0,0.15);
+        }
+        .local-restore-paste-btn{
+            width:100%;
+            margin:8px 0;
+            padding:12px;
+            background:#9b59b6;
+            color:#fff;
+            border:none;
+            border-radius:6px;
+            font-size:15px;
+            cursor:pointer;
+            box-shadow:0 4px 0 #7d3c98,0 6px 8px rgba(0,0.15);
+            transition:all 0.1s ease;
+        }
+        .local-restore-paste-btn:active{
+            transform:translateY(2px);
+            box-shadow:0 2px 0 #7d3c98,0 3px 4px rgba(0,0.15);
+        }
+        .paste-restore-textarea{
+            width:100%;
+            min-height:180px;
+            padding:12px;
+            margin:8px 0;
+            border:1px solid var(--input-border);
+            border-radius:6px;
+            font-size:14px;
+        }
+        .switch{
+            width:50px;
+            height:26px;
+            background:#ccc;
+            border-radius:13px;
+            position:relative;
+            cursor:pointer;
+            transition:background 0.3s;
+        }
+        .switch::after{
+            content:'';
+            position:absolute;
+            width:22px;
+            height:22px;
+            background:#fff;
+            border-radius:50%;
+            top:2px;
+            left:2px;
+            transition:left 0.3s;
+        }
+        .switch.active{
+            background:#4096ff;
+        }
+        .switch.active::after{
+            left:26px;
+        }
+        .setting-close-btn{
+            width:100%;
+            margin-top:20px;
+            padding:12px;
+            background:#4096ff;
+            color:#fff;
+            border:none;
+            border-radius:6px;
+            font-size:15px;
+            cursor:pointer;
+            box-shadow:0 4px 0 #267ddd,0 6px 8px rgba(0,0.15);
+            transition:all 0.1s ease;
+        }
+        .setting-close-btn:active{
+            transform:translateY(2px);
+            box-shadow:0 2px 0 #267ddd,0 3px 4px rgba(0,0.15);
+        }
+        #copyTextarea{
+            position:absolute;
+            left:-9999px;
+            top:0;
+        }
+    </style>
 </head>
 <body>
-<!-- 右上角切换按钮 -->
-<button class="side-toggle" id="toggleSideBtn">☰</button>
+    <div class="title-set-row">
+        <input type="text" id="noteTitle" placeholder="输入笔记标题">
+        <button class="top-right-btn" id="topRightBtn">设置</button>
+    </div>
 
-<!-- 右侧隐藏操作栏 -->
-<div class="right-sidebar" id="rightSideBar">
-    <button class="side-btn btn-new" id="addNote">新建笔记</button>
-    <button class="side-btn btn-export" id="exportBackup">手动导出备份</button>
-    <button class="side-btn btn-import" id="showImport">手动导入恢复</button>
-    <button class="side-btn btn-sync-upload" id="syncUpload">一键上传WebDAV云备份</button>
-    <button class="side-btn btn-sync-download" id="syncDownload">一键下载WebDAV云端笔记</button>
-    <button class="side-btn btn-setting" id="openDavSetting">WebDAV账号设置</button>
-    <button class="side-btn btn-donate" id="openDonate">充值赞助</button>
-    <button class="side-btn btn-theme" id="toggleTheme">切换暗黑/日间</button>
-</div>
+    <textarea id="noteContent" placeholder="在这里输入笔记详细内容..."></textarea>
+    <div class="save-wrap">
+        <button class="btn" id="saveBtn">保存</button>
+    </div>
 
-<!-- 主笔记内容区 -->
-<div class="main-content">
-    <div id="noteList"></div>
-    <div class="sync-status" id="syncStatus">就绪（联网https环境可正常一键同步）</div>
-    <div class="tip-desc">日常编辑自动保存本地｜联网环境可联网坚果云WebDAV同步，手动备份永久可用，点右上角☰打开操作栏</div>
-</div>
-
-<!-- 新增/编辑笔记弹窗 -->
-<div class="mask" id="editMask">
-    <div class="pop-box">
-        <input class="form-input" id="titleInp" placeholder="输入笔记标题">
-        <textarea class="form-textarea" id="contentInp" placeholder="详细记录笔记内容"></textarea>
-        <input type="hidden" id="editIndex">
-        <div class="pop-btn-group">
-            <button class="full-green-btn" id="saveLocal">保存到本地</button>
+    <div class="history-container">
+        <button class="history-toggle-btn" id="historyToggleBtn">历史笔记</button>
+        <div class="history-list-wrap" id="historyListWrap">
+            <div id="noteList"></div>
         </div>
-        <button class="full-gray-btn" id="closeEdit">取消关闭</button>
     </div>
-</div>
 
-<!-- 手动导入备份弹窗 -->
-<div class="mask" id="importMask">
-    <div class="pop-box">
-        <div class="pop-title">粘贴云端备份文本手动导入</div>
-        <textarea class="form-textarea import-textarea" id="pasteBackupText" placeholder="粘贴坚果云导出的完整备份JSON文本"></textarea>
-        <div class="pop-btn-group">
-            <button class="full-green-btn" id="confirmImport">确认导入覆盖本地笔记</button>
+    <div class="toast" id="toast"></div>
+    <textarea id="copyTextarea"></textarea>
+    <div class="confirm-mask" id="confirmMask">
+        <div class="confirm-box">
+            <div class="confirm-text">确认删除</div>
+            <div class="confirm-btn-group">
+                <button class="confirm-cancel" id="confirmCancel">取消</button>
+                <button class="confirm-ok" id="confirmOk">确定</button>
+            </div>
         </div>
-        <button class="full-gray-btn" id="closeImport">取消关闭</button>
     </div>
-</div>
-
-<!-- WebDAV账号设置弹窗 -->
-<div class="mask" id="davSettingMask">
-    <div class="pop-box">
-        <div class="pop-title">坚果云WebDAV账号配置</div>
-        <input class="form-input" id="davUrl" placeholder="WebDAV地址：https://dav.jianguoyun.com/dav/note_backup/">
-        <input class="form-input" id="davUser" placeholder="坚果云注册邮箱">
-        <input class="form-input" type="password" id="davPwd" placeholder="坚果云第三方应用密码">
-        <div class="pop-btn-group">
-            <button class="full-green-btn" id="saveDavConfig">保存账号配置</button>
+    <div class="edit-mask" id="editMask">
+        <div class="edit-box">
+            <input class="edit-title-input" id="editTitle" placeholder="修改笔记标题">
+            <textarea class="edit-content-textarea" id="editContent" placeholder="修改笔记内容"></textarea>
+            <div class="edit-btn-group">
+                <button class="edit-save-btn" id="editSaveBtn">保存修改</button>
+                <button class="edit-close-btn" id="editCloseBtn">关闭</button>
+            </div>
         </div>
-        <button class="full-gray-btn" id="closeDavSetting">取消关闭</button>
     </div>
-</div>
-
-<!-- 充值赞助弹窗 -->
-<div class="mask" id="donateMask">
-    <div class="pop-box">
-        <div class="pop-title">扫码充值赞助</div>
-        <p class="donate-text">微信/支付宝扫码转账，支持云同步优化升级</p>
-        <img class="donate-qrcode" src="替换你的收款公网链接" alt="收款码">
-        <p class="donate-text">转账备注可留昵称方便核验权益</p>
-        <button class="full-gray-btn" id="closeDonate">关闭弹窗</button>
+    <div class="setting-mask" id="settingMask">
+        <div class="setting-box">
+            <div class="setting-title">设置中心</div>
+            <div class="dark-switch-row">
+                <span>暗黑模式</span>
+                <div class="switch" id="darkSwitch"></div>
+            </div>
+            <div class="webdav-set-row">
+                <input class="webdav-input" id="davUrlInput" placeholder="坚果云WebDAV地址：https://dav.jianguoyun.com/dav/note_backup/">
+                <input class="webdav-input" id="davUserInput" placeholder="坚果云登录邮箱(WebDAV用户名)">
+                <input class="webdav-input" id="davPwdInput" type="password" placeholder="坚果云应用密码(WebDAV密码)">
+                <button class="backup-cloud-btn" id="uploadToNutBtn">一键备份笔记上传至坚果云</button>
+                <button class="restore-cloud-btn" id="restoreFromNutBtn">从坚果云备份还原笔记</button>
+                <button class="local-backup-btn" id="localBackupBtn">备份笔记到本地（复制备份文本）</button>
+                <textarea class="paste-restore-textarea" id="pasteRestoreArea" placeholder="粘贴之前复制的笔记备份JSON文本，再执行导入恢复"></textarea>
+                <button class="local-restore-paste-btn" id="pasteRestoreBtn">粘贴备份文本导入恢复笔记</button>
+            </div>
+            <button class="setting-close-btn" id="settingCloseBtn">返回主页</button>
+        </div>
     </div>
-</div>
 
-<script>
-// 【修复核心：侧边切换代码单独前置，优先执行】
-const toggleSideBtn = document.getElementById('toggleSideBtn');
-const rightSideBar = document.getElementById('rightSideBar');
-// 点击切换展开/收起
-toggleSideBtn.onclick = function(){
-    rightSideBar.classList.toggle('open');
-    if(rightSideBar.classList.contains('open')){
-        toggleSideBtn.textContent = '✕';
-    }else{
-        toggleSideBtn.textContent = '☰';
-    }
-}
+    <script>
+        const titleInput = document.getElementById('noteTitle');
+        const contentInput = document.getElementById('noteContent');
+        const saveBtn = document.getElementById('saveBtn');
+        const noteList = document.getElementById('noteList');
+        const toast = document.getElementById('toast');
+        const confirmMask = document.getElementById('confirmMask');
+        const confirmCancel = document.getElementById('confirmCancel');
+        const confirmOk = document.getElementById('confirmOk');
+        const editMask = document.getElementById('editMask');
+        const editTitle = document.getElementById('editTitle');
+        const editContent = document.getElementById('editContent');
+        const editSaveBtn = document.getElementById('editSaveBtn');
+        const editCloseBtn = document.getElementById('editCloseBtn');
+        const topRightBtn = document.getElementById('topRightBtn');
+        const settingMask = document.getElementById('settingMask');
+        const settingCloseBtn = document.getElementById('settingCloseBtn');
+        const darkSwitch = document.getElementById('darkSwitch');
+        const uploadToNutBtn = document.getElementById('uploadToNutBtn');
+        const restoreFromNutBtn = document.getElementById('restoreFromNutBtn');
+        const davUrlInput = document.getElementById('davUrlInput');
+        const davUserInput = document.getElementById('davUserInput');
+        const davPwdInput = document.getElementById('davPwdInput');
+        const bodyDom = document.body;
+        const historyToggleBtn = document.getElementById('historyToggleBtn');
+        const historyListWrap = document.getElementById('historyListWrap');
+        const localBackupBtn = document.getElementById('localBackupBtn');
+        const pasteRestoreBtn = document.getElementById('pasteRestoreBtn');
+        const pasteRestoreArea = document.getElementById('pasteRestoreArea');
+        const copyTextarea = document.getElementById('copyTextarea');
 
-// 内嵌精简WebDAV客户端
-const webdav = {
-    createClient: function(url, opts = {}) {
-        const baseUrl = url.endsWith('/') ? url : url + '/';
-        const authHeader = 'Basic ' + btoa(opts.username + ':' + opts.password);
-        const headers = {
-            'Authorization': authHeader
-        };
-        return {
-            async exists(path) {
-                const res = await fetch(baseUrl + path, { method: 'HEAD', headers });
-                return res.ok;
-            },
-            async putFileContents(path, content, optsPut = {}) {
-                const putHeaders = { ...headers };
-                if (optsPut.contentType) putHeaders['Content-Type'] = optsPut.contentType;
-                await fetch(baseUrl + path, {
-                    method: 'PUT',
-                    headers: putHeaders,
-                    body: content
-                });
-            },
-            async getFileContents(path, optsGet = {}) {
-                const res = await fetch(baseUrl + path, { method: 'GET', headers });
-                if (!res.ok) throw new Error('坚果云请求异常：'+res.status);
-                if (optsGet.format === 'text') return await res.text();
-                return await res.blob();
-            }
+        let deleteIndex = null; // 单独记录待删除下标（替换原resolveDelete变量，修复异步绑定失效问题）
+
+        let darkModeOn = localStorage.getItem('darkMode') === 'on';
+        if(darkModeOn){
+            bodyDom.classList.add('dark-mode');
+            darkSwitch.classList.add('active');
         }
-    }
-};
+        davUrlInput.value = localStorage.getItem('nut_dav_url') || 'https://dav.jianguoyun.com/dav/note_backup/';
+        davUserInput.value = localStorage.getItem('nut_dav_user') || '';
+        davPwdInput.value = localStorage.getItem('nut_dav_pwd') || '';
 
-// 本地存储KEY
-const LOCAL_STORE_NOTE_KEY = 'auto_webdav_sidebar_notes';
-const DAV_CONFIG_STORE_KEY = 'webdav_nut_config';
-const DAV_CLOUD_FILE_NAME = 'cloud_note_backup.json';
-let noteListData = JSON.parse(localStorage.getItem(LOCAL_STORE_NOTE_KEY)) || [];
-let davConfigInfo = JSON.parse(localStorage.getItem(DAV_CONFIG_STORE_KEY)) || {url:'',user:'',pwd:''};
-if(localStorage.getItem('noteDarkMode') === 'dark') document.body.classList.add('dark-mode');
+        historyToggleBtn.addEventListener('click',()=>{
+            historyListWrap.classList.toggle('show');
+        })
 
-// DOM绑定
-const addNoteBtn = document.getElementById('addNote');
-const exportBackupBtn = document.getElementById('exportBackup');
-const importBtn = document.getElementById('showImport');
-const syncUploadBtn = document.getElementById('syncUpload');
-const syncDownloadBtn = document.getElementById('syncDownload');
-const openSettingBtn = document.getElementById('openDavSetting');
-const toggleDarkBtn = document.getElementById('toggleTheme');
-const noteListWrap = document.getElementById('noteList');
-const syncStatusText = document.getElementById('syncStatus');
-const editMask = document.getElementById('editMask');
-const titleInput = document.getElementById('titleInp');
-const contentInput = document.getElementById('contentInp');
-const editIndexInput = document.getElementById('editIndex');
-const saveLocalBtn = document.getElementById('saveLocal');
-const closeEditBtn = document.getElementById('closeEdit');
-const importMask = document.getElementById('importMask');
-const pasteBackupInput = document.getElementById('pasteBackupText');
-const confirmImportBtn = document.getElementById('confirmImport');
-const closeImportBtn = document.getElementById('closeImport');
-const davSettingMask = document.getElementById('davSettingMask');
-const davUrlInput = document.getElementById('davUrl');
-const davUserInput = document.getElementById('davUser');
-const davPwdInput = document.getElementById('davPwd');
-const saveDavConfigBtn = document.getElementById('saveDavConfig');
-const closeDavSettingBtn = document.getElementById('closeDavSetting');
-const openDonateBtn = document.getElementById('openDonate');
-const donateMask = document.getElementById('donateMask');
-const closeDonateBtn = document.getElementById('closeDonate');
+        function showToast(msg){
+            toast.textContent = msg;
+            toast.style.display = 'block';
+            setTimeout(()=>{
+                toast.style.display = 'none';
+            },2000);
+        }
 
-davUrlInput.value = davConfigInfo.url;
-davUserInput.value = davConfigInfo.user;
-davPwdInput.value = davConfigInfo.pwd;
+        // 取消弹窗：关闭清空下标
+        confirmCancel.onclick = ()=>{
+            confirmMask.style.display = 'none';
+            deleteIndex = null;
+        }
+        // 确定删除：执行删除逻辑
+        confirmOk.onclick = ()=>{
+            if(deleteIndex !== null){
+                const list = getNotes();
+                list.splice(deleteIndex,1);
+                saveNotes(list);
+                showToast('删除成功');
+            }
+            confirmMask.style.display = 'none';
+            deleteIndex = null;
+        }
 
-// 渲染笔记列表
-function renderNoteList(){
-    noteListWrap.innerHTML = '';
-    noteListData.forEach((item, idx)=>{
-        const noteDiv = document.createElement('div');
-        noteDiv.className = 'note-card';
-        noteDiv.innerHTML = `
-            <div class="note-title">${item.title}</div>
-            <div class="note-time">${item.createTime}</div>
-            <div class="note-content">${item.content}</div>
-            <div class="note-operate">
-                <button class="edit-small-btn" data-idx="${idx}">编辑</button>
-                <button class="del-small-btn" data-idx="${idx}">删除</button>
-            </div>`;
-        noteListWrap.appendChild(noteDiv);
-    })
-    // 编辑删除绑定
-    document.querySelectorAll('.edit-small-btn').forEach(btn=>{
-        btn.addEventListener('click',(e)=>{
-            const idx = Number(e.target.dataset.idx);
-            const targetNote = noteListData[idx];
-            titleInput.value = targetNote.title;
-            contentInput.value = targetNote.content;
-            editIndexInput.value = idx;
+        editCloseBtn.onclick = ()=>{
+            editMask.style.display = 'none';
+        }
+        function openEditModal(index, noteData){
+            editTitle.value = noteData.title;
+            editContent.value = noteData.content;
             editMask.style.display = 'flex';
+        }
+        editSaveBtn.onclick = ()=>{
+            const newTitle = editTitle.value.trim();
+            const newContent = editContent.value.trim();
+            if(!newTitle || !newContent){
+                showToast('标题和内容不能为空');
+                return;
+            }
+            const notesList = getNotes();
+            notesList[deleteIndex !== null ? deleteIndex : notesList.length] = {
+                title: newTitle,
+                content: newContent,
+                time: new Date().toLocaleString()
+            };
+            saveNotes(notesList);
+            editMask.style.display = 'none';
+            showToast('修改保存成功');
+        }
+        function getNotes(){
+            return JSON.parse(localStorage.getItem('myNotes')) || [];
+        }
+        function saveNotes(list){
+            localStorage.setItem('myNotes',JSON.stringify(list));
+            renderNotes();
+        }
+        function renderNotes(){
+            const list = getNotes();
+            noteList.innerHTML = '';
+            list.forEach((item,index)=>{
+                const div = document.createElement('div');
+                div.className = 'note-item';
+                const infoDiv = document.createElement('div');
+                infoDiv.className = 'note-info';
+                infoDiv.innerHTML = `<div class="note-title">${item.title}</div><div class="note-time">${item.time}</div>`;
+                infoDiv.onclick = function(){
+                    openEditModal(index, item);
+                }
+                const delBtn = document.createElement('button');
+                delBtn.className = 'delete-btn';
+                delBtn.textContent = '删除';
+                delBtn.onclick = function(e){
+                    e.stopPropagation();
+                    // 点击删除按钮：记录下标、弹出确认框
+                    deleteIndex = index;
+                    confirmMask.style.display = 'flex';
+                }
+                div.appendChild(infoDiv);
+                div.appendChild(delBtn);
+                noteList.appendChild(div);
+            })
+        }
+        saveBtn.addEventListener('click',()=>{
+            const title = titleInput.value.trim();
+            const content = contentInput.value.trim();
+            if(!title || !content){
+                showToast('标题和内容不能为空');
+                return;
+            }
+            const now = new Date().toLocaleString();
+            const newNote = {title,content,time:now};
+            const list = getNotes();
+            list.unshift(newNote);
+            saveNotes(list);
+            titleInput.value = '';
+            contentInput.value = '';
+            showToast('保存成功');
         })
-    })
-    document.querySelectorAll('.del-small-btn').forEach(btn=>{
-        btn.addEventListener('click',(e)=>{
-            const idx = Number(e.target.dataset.idx);
-            if(confirm('确认删除这条笔记？')){
-                noteListData.splice(idx,1);
-                saveNoteLocal();
-                renderNoteList();
+        topRightBtn.addEventListener('click',()=>{
+            settingMask.style.display = 'flex';
+        })
+        settingCloseBtn.addEventListener('click',()=>{
+            settingMask.style.display = 'none';
+        })
+        darkSwitch.addEventListener('click',()=>{
+            darkModeOn = !darkModeOn;
+            if(darkModeOn){
+                bodyDom.classList.add('dark-mode');
+                darkSwitch.classList.add('active');
+                localStorage.setItem('darkMode','on');
+            }else{
+                bodyDom.classList.remove('dark-mode');
+                darkSwitch.classList.remove('active');
+                localStorage.setItem('darkMode','off');
             }
         })
-    })
-}
-// 保存本地
-function saveNoteLocal(){
-    localStorage.setItem(LOCAL_STORE_NOTE_KEY,JSON.stringify(noteListData));
-}
-// 状态提示
-function updateSyncTip(text){
-    syncStatusText.innerText = text;
-}
-
-// 新建笔记点击
-addNoteBtn.addEventListener('click',()=>{
-    titleInput.value = '';
-    contentInput.value = '';
-    editIndexInput.value = '';
-    editMask.style.display = 'flex';
-})
-// 关闭编辑弹窗
-closeEditBtn.addEventListener('click',()=>{
-    editMask.style.display = 'none';
-})
-// 保存笔记
-saveLocalBtn.addEventListener('click',()=>{
-    const titleVal = titleInput.value.trim();
-    const contentVal = contentInput.value.trim();
-    if(!titleVal && !contentVal){
-        alert('标题或内容至少填写一项');
-        return;
-    }
-    const nowTime = new Date().toLocaleString();
-    const editIdx = editIndexInput.value;
-    if(editIdx !== ''){
-        noteListData[editIdx].title = titleVal;
-        noteListData[editIdx].content = contentVal;
-        noteListData[editIdx].updateTime = nowTime;
-    }else{
-        noteListData.unshift({
-            title:titleVal,
-            content:contentVal,
-            createTime:nowTime
-        })
-    }
-    saveNoteLocal();
-    renderNoteList();
-    editMask.style.display = 'none';
-    updateSyncTip('本地保存完成，可执行云同步上传');
-})
-// 手动导出
-exportBackupBtn.addEventListener('click',()=>{
-    const backupStr = JSON.stringify(noteListData,null,2);
-    navigator.clipboard.writeText(backupStr).then(()=>{
-        alert('✅备份文本已复制到剪贴板，可保存或上传坚果云网页');
-    }).catch(()=>{
-        prompt('手动复制下方备份文本：',backupStr);
-    })
-})
-// 打开导入弹窗
-importBtn.addEventListener('click',()=>{
-    pasteBackupInput.value = '';
-    importMask.style.display = 'flex';
-})
-closeImportBtn.addEventListener('click',()=>{
-    importMask.style.display = 'none';
-})
-// 确认导入
-confirmImportBtn.addEventListener('click',()=>{
-    const pasteStr = pasteBackupInput.value.trim();
-    if(!pasteStr){
-        alert('请粘贴备份JSON文本');
-        return;
-    }
-    try{
-        const importArr = JSON.parse(pasteStr);
-        if(Array.isArray(importArr)){
-            if(confirm('⚠️导入将覆盖当前所有本地笔记，确认继续？')){
-                noteListData = importArr;
-                saveNoteLocal();
-                renderNoteList();
-                importMask.style.display = 'none';
-                alert('✅导入成功');
-                updateSyncTip('手动云端备份导入完成');
+        uploadToNutBtn.addEventListener('click', async ()=>{
+            const davUrl = davUrlInput.value.trim();
+            const davUser = davUserInput.value.trim();
+            const davPwd = davPwdInput.value.trim();
+            if(!davUrl || !davUser || !davPwd){
+                showToast('请完整填写坚果云WebDAV地址、邮箱、应用密码');
+                return;
             }
-        }else{
-            alert('备份格式错误，必须为数组JSON');
-        }
-    }catch(err){
-        alert('JSON解析失败：'+err.message);
-    }
-})
-// 打开设置弹窗
-openSettingBtn.addEventListener('click',()=>{
-    davSettingMask.style.display = 'flex';
-})
-closeDavSettingBtn.addEventListener('click',()=>{
-    davSettingMask.style.display = 'none';
-})
-// 保存WebDAV配置
-saveDavConfigBtn.addEventListener('click',()=>{
-    davConfigInfo.url = davUrlInput.value.trim();
-    davConfigInfo.user = davUserInput.value.trim();
-    davConfigInfo.pwd = davPwdInput.value.trim();
-    localStorage.setItem(DAV_CONFIG_STORE_KEY,JSON.stringify(davConfigInfo));
-    davSettingMask.style.display = 'none';
-    updateSyncTip('坚果云WebDAV账号已保存，联网环境可一键同步');
-})
-// 暗黑切换
-toggleDarkBtn.addEventListener('click',()=>{
-    document.body.classList.toggle('dark-mode');
-    localStorage.setItem('noteDarkMode',document.body.classList.contains('dark-mode')?'dark':'light';
-})
-// 打开赞助弹窗
-openDonateBtn.addEventListener('click',()=>{
-    donateMask.style.display = 'flex';
-})
-closeDonateBtn.addEventListener('click',()=>{
-    donateMask.style.display = 'none';
-})
-// 一键上传
-syncUploadBtn.addEventListener('click',async ()=>{
-    if(!davConfigInfo.url || !davConfigInfo.user || !davConfigInfo.pwd){
-        alert('请先填写并保存坚果云WebDAV账号信息');
-        return;
-    }
-    try{
-        updateSyncTip('正在上传备份至坚果云云端...');
-        const davClient = webdav.createClient(davConfigInfo.url,{username:davConfigInfo.user,password:davConfigInfo.pwd});
-        const backupJsonStr = JSON.stringify(noteListData,null,2);
-        await davClient.putFileContents(DAV_CLOUD_FILE_NAME,backupJsonStr,{contentType:'application/json'});
-        updateSyncTip('✅一键上传坚果云云备份成功，云端已更新笔记');
-    }catch(err){
-        console.error(err);
-        updateSyncTip('❌上传失败：'+err.message+'，优先改用手动导出备份');
-        alert('上传异常：'+err.message+'，优先改用手动导出备份');
-    }
-})
-// 一键下载
-syncDownloadBtn.addEventListener('click',async ()=>{
-    if(!davConfigInfo.url || !davConfigInfo.user || !davConfigInfo.pwd){
-        alert('请先填写并保存坚果云WebDAV账号信息');
-        return;
-    }
-    if(!confirm('⚠️下载云端笔记将覆盖当前全部本地笔记，确认继续？')) return;
-    try{
-        updateSyncTip('正在从坚果云下载云端备份笔记...');
-        const davClient = webdav.createClient(davConfigInfo.url,{username:davConfigInfo.user,password:davConfigInfo.pwd});
-        const fileExist = await davClient.exists(DAV_CLOUD_FILE_NAME);
-        if(!fileExist){
-            updateSyncTip('云端暂无备份文件，无需下载');
-            return;
-        }
-        const cloudText = await davClient.getFileContents(DAV_CLOUD_FILE_NAME,{format:'text'});
-        const cloudNoteArr = JSON.parse(cloudText);
-        noteListData = cloudNoteArr;
-        saveNoteLocal();
-        renderNoteList();
-        updateSyncTip('✅云端笔记下载恢复成功，本地已同步更新');
-    }catch(err){
-        console.error(err);
-        updateSyncTip('❌下载失败：'+err.message+'，优先改用手动导入恢复');
-        alert('下载异常：'+err.message+'，优先改用手动导入恢复');
-    }
-})
+            localStorage.setItem('nut_dav_url',davUrl);
+            localStorage.setItem('nut_dav_user',davUser);
+            localStorage.setItem('nut_dav_pwd',davPwd);
+            showToast('浏览器跨域限制，已保存配置，本地笔记正常留存');
+        })
+        restoreFromNutBtn.addEventListener('click', async ()=>{
+            const davUrl = davUrlInput.value.trim();
+            const davUser = davUserInput.value.trim();
+            const davPwd = davPwdInput.value.trim();
+            if(!davUrl || !davUser || !davPwd){
+                showToast('请完整填写坚果云WebDAV信息');
+                return;
+            }
+            showToast('浏览器跨域限制，还原需后端中转');
+        })
 
-// 初始化渲染列表
-renderNoteList();
-</script>
+        localBackupBtn.addEventListener('click', ()=>{
+            const notes = getNotes();
+            const jsonStr = JSON.stringify(notes,null,2);
+            copyTextarea.value = jsonStr;
+            copyTextarea.select();
+            document.execCommand('copy');
+            showToast('备份文本已复制，可粘贴保存');
+        })
+        pasteRestoreBtn.addEventListener('click', ()=>{
+            const pasteText = pasteRestoreArea.value.trim();
+            if(!pasteText){
+                showToast('请先粘贴备份JSON文本');
+                return;
+            }
+            try{
+                const restoreList = JSON.parse(pasteText);
+                if(Array.isArray(restoreList)){
+                    saveNotes(restoreList);
+                    pasteRestoreArea.value = '';
+                    showToast('粘贴导入笔记恢复成功');
+                }else{
+                    showToast('文本不是有效笔记备份数组');
+                }
+            }catch(err){
+                showToast('JSON解析失败，备份文本有误');
+            }
+        })
+
+        renderNotes();
+    </script>
 </body>
 </html>
