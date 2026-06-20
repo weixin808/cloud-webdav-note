@@ -4,8 +4,8 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
 <title>侧边暗黑WebDAV全自动云同步记事本</title>
-<!-- WebDAV依赖（仅HTTPS环境正常加载） -->
-<script src="https://cdn.jsdelivr.net/npm/webdav@5.5.0/dist/umd/webdav.min.js"></script>
+<!-- 更换国内更稳定的webdav CDN地址，增加预加载检测 -->
+<script src="https://unpkg.com/webdav@5.5.0/dist/umd/webdav.min.js"></script>
 <style>
 *{margin:0;padding:0;box-sizing:border-box;font-family:system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;transition: background 0.3s, color 0.3s;}
 /* 亮色默认变量 */
@@ -338,6 +338,12 @@ saveDavConfigBtn.addEventListener('click', ()=>{
 })
 //【一键上传本地笔记到WebDAV云端覆盖】仅HTTPS环境生效
 syncUploadBtn.addEventListener('click', async ()=>{
+    //校验webdav对象是否加载成功
+    if(typeof webdav === 'undefined'){
+        alert('❌WebDAV脚本加载失败，无法执行自动上传，请稍后刷新页面重试，或改用手动备份');
+        updateSyncStatus('WebDAV依赖加载异常，禁用自动上传');
+        return;
+    }
     //检测当前协议，本地file直接拦截提示
     if(location.protocol === 'file:'){
         alert('当前为本地file打开，浏览器跨域限制无法自动上传，请切换HTTPS公网链接再执行自动同步，可继续使用手动备份');
@@ -362,6 +368,12 @@ syncUploadBtn.addEventListener('click', async ()=>{
 })
 //【一键从WebDAV云端下载笔记覆盖本地】仅HTTPS环境生效
 syncDownloadBtn.addEventListener('click', async ()=>{
+    //校验webdav对象是否加载成功
+    if(typeof webdav === 'undefined'){
+        alert('❌WebDAV脚本加载失败，无法执行自动下载，请稍后刷新页面重试，或改用手动导入');
+        updateSyncStatus('WebDAV依赖加载异常，禁用自动下载');
+        return;
+    }
     if(location.protocol === 'file:'){
         alert('当前为本地file打开，浏览器跨域限制无法自动下载，请切换HTTPS公网链接再执行自动同步，可继续使用手动导入');
         updateSyncStatus('file本地协议：自动下载禁用，使用手动导入');
